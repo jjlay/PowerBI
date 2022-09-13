@@ -1,0 +1,27 @@
+let
+    Source = Excel.Workbook(File.Contents("C:\Temp\ChartOfAccounts.xlsx"), null, true),
+    Sheet1_Sheet = Source{[Item="Sheet1",Kind="Sheet"]}[Data],
+    #"Changed Type to Text" = Table.TransformColumnTypes(Sheet1_Sheet,{{"Column1", type text}, {"Column2", type text}}),
+    #"Trimmed Text" = Table.TransformColumns(#"Changed Type to Text",{{"Column1", Text.Trim, type text}, {"Column2", Text.Trim, type text}}),
+    #"Determine row type" = Table.AddColumn(#"Trimmed Text", "HasAnAccountNumber", each if [Column1] = null then null
+else
+if Text.PositionOf([Column1], " ") = -1 and
+(try Number.From([Column1]) otherwise null) = null then null
+else 
+if Text.PositionOf([Column1], " ") = -1 then 0
+else 
+try Number.FromText(Text.Start([Column1], Text.PositionOf([Column1], " ")))
+otherwise null),
+    #"Added Level_1" = Table.AddColumn(#"Determine row type", "Level_1", each if [HasAnAccountNumber] = null then [Column1] else null),
+    #"Added Level_2_Temp" = Table.AddColumn(#"Added Level_1", "Level_2_Temp", each if [HasAnAccountNumber] <> null and [HasAnAccountNumber] > 0 then [Column1] else if [Column2] = null then null else null),
+    #"Added Account_Number" = Table.AddColumn(#"Added Level_2_Temp", "Account_Number", each if [Column1] <> null and [Column2] <> null then [Column1] else null),
+    #"Added Account_Description" = Table.AddColumn(#"Added Account_Number", "Account_Description", each if [Column1] <> null and [Column2] <> null then [Column2] else null),
+    #"Changed Type" = Table.TransformColumnTypes(#"Added Account_Description",{{"Level_1", type text}, {"Level_2_Temp", type text}, {"Account_Number", type text}, {"Account_Description", type text}}),
+    #"Filled Down" = Table.FillDown(#"Changed Type",{"Level_1", "Level_2_Temp"}),
+    #"Filtered Rows" = Table.SelectRows(#"Filled Down", each ([Account_Number] <> null)),
+    #"Added Level_2" = Table.AddColumn(#"Filtered Rows", "Level_2", each if Text.Start([Level_2_Temp], 1) <> Text.Start([Account_Number], 1) then [Account_Number] & " " &[Account_Description] else [Level_2_Temp]),
+    #"Changed Type of Level_2" = Table.TransformColumnTypes(#"Added Level_2",{{"Level_2", type text}}),
+    #"Removed Other Columns" = Table.SelectColumns(#"Changed Type of Level_2",{"Level_1", "Account_Number", "Account_Description", "Level_2"}),
+    #"Reordered Columns" = Table.ReorderColumns(#"Removed Other Columns",{"Level_1", "Level_2", "Account_Number", "Account_Description"})
+in
+    #"Reordered Columns"
