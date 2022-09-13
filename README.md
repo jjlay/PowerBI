@@ -4,7 +4,7 @@
 
 Example of parsing an Excel file containing a chart of accounts.
 
-See:
+See: https://www.reddit.com/r/PowerQuery/comments/xclbfe/this_seems_like_a_common_scenario_but_i_cant_find/
 
 
 ## Multi-file YTD
